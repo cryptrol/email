@@ -177,14 +177,9 @@ func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 	}
 	if auth != nil {
 		if ok, _ := c.Extension("AUTH"); ok {
-     			if err = c.Auth(auth); err != nil {
-				// If negotiation fails, try LOGIN
-			    	if ok, _ := c.Extension("LOGIN"); ok { 			
-			        	if err = c.Auth(auth); err != nil {
-				            	return err
-			         	}
-         			}
-			}
+	        	if err = c.Auth(auth); err != nil {
+		            	return err
+	         	}
 		}
 	}
 	if err = c.Mail(m.From); err != nil {

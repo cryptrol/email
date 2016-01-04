@@ -178,15 +178,10 @@ func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 	}
 	if auth != nil {
 		if ok, params := c.Extension("AUTH"); ok {
-			fmt.Println("AUTH extension ok")
-			fmt.Println("Params " + params)
 			if ok, params = c.Extension("LOGIN"); ok {
-	                        fmt.Println("AUTH extension ok")
-        	                fmt.Println("Params " + params)
 		        	if err = c.Auth(auth); err != nil {
 			            	return err
 	        	 	}
-				fmt.Println("AUTH done without error")
 			}
 		}
 	}

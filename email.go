@@ -174,19 +174,27 @@ func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 		if err = c.StartTLS(config); err != nil {
 			return err
 		}
+		fmt.Println("STARTTLS ok")
 	}
 	if auth != nil {
-		if ok, _ := c.Extension("AUTH"); ok {
-	        	if err = c.Auth(auth); err != nil {
-		            	return err
-	         	}
+		if ok, params := c.Extension("AUTH"); ok {
+			fmt.Println("AUTH extension ok")
+			fmt.Println("Params " + params)
+			if ok, params = c.Extension("LOGIN"); ok {
+	                        fmt.Println("AUTH extension ok")
+        	                fmt.Println("Params " + params)
+		        	if err = c.Auth(auth); err != nil {
+			            	return err
+	        	 	}
+				fmt.Println("AUTH done without error")
+			}
 		}
 	}
 	if err = c.Mail(m.From); err != nil {
 		return err
 	}
-	for _, addr := range m.Tolist() {
-		if err = c.Rcpt(addr); err != nil {
+	for _, to := range m.Tolist() {
+		if err = c.Rcpt(to); err != nil {
 			return err
 		}
 	}

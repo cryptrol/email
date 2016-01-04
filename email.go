@@ -4,9 +4,11 @@ package email
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/smtp"
 	"path/filepath"
 	"strings"
@@ -157,6 +159,48 @@ func (m *Message) Bytes() []byte {
 	return buf.Bytes()
 }
 
-func Send(addr string, auth smtp.Auth, m *Message) error {
-	return smtp.SendMail(addr, auth, m.From, m.Tolist(), m.Bytes())
+func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	host, _, _ := net.SplitHostPort(addr)
+	if err = c.Hello(host); err != nil {
+		return err
+	}
+	if ok, _ := c.Extension("STARTTLS"); ok {
+		config := &tls.Config{ServerName: host, InsecureSkipVerify: skipverify}
+		if err = c.StartTLS(config); err != nil {
+			return err
+		}
+	}
+	if auth != nil {
+		if ok, _ := c.Extension("AUTH"); ok {
+			if err = c.Auth(auth); err != nil {
+				return err
+			}
+		}
+	}
+	if err = c.Mail(m.From); err != nil {
+		return err
+	}
+	for _, addr := range m.Tolist() {
+		if err = c.Rcpt(addr); err != nil {
+			return err
+		}
+	}
+	w, err := c.Data()
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(m.Bytes())
+	if err != nil {
+		return err
+	}
+	err = w.Close()
+	if err != nil {
+		return err
+	}
+	return c.Quit()
 }

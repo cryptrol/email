@@ -17,7 +17,7 @@ func TestSend(t *testing.T) {
 		panic(err)
 	}
 
-	err = Send("smtp.gmail.com:587", smtp.PlainAuth("", "user", "passoword", "smtp.gmail.com"), m)
+	err = Send("smtp.gmail.com:587", smtp.PlainAuth("", "user", "passoword", "smtp.gmail.com"), m, false)
 	if err != nil {
 		panic(err)
 	}

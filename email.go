@@ -206,7 +206,7 @@ func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	}
 }
 
-// param @args : Supported optional arguments are "skipverify" in order to skip TLS cert validation (insecure).
+// Added skipverify parameter in order to skip TLS cert validation (insecure).
 func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 	c, err := smtp.Dial(addr)
 	if err != nil {

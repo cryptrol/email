@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -159,6 +160,53 @@ func (m *Message) Bytes() []byte {
 	return buf.Bytes()
 }
 
+type loginAuth struct {
+	username string
+	password string
+	host     string
+}
+
+// LoginAuth returns an Auth that implements the LOGIN authentication mechanism.
+func LoginAuth(username, password, host string) smtp.Auth {
+	return &loginAuth{username, password, host}
+}
+
+func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	if !server.TLS {
+		advertised := false
+		for _, mechanism := range server.Auth {
+			if mechanism == "LOGIN" {
+				advertised = true
+				break
+			}
+		}
+		if !advertised {
+			return "", nil, errors.New("LoginAuth: Unencrypted connection")
+		}
+	}
+	if server.Name != a.host {
+		return "", nil, errors.New("LoginAuth: Wrong host name")
+	}
+	return "LOGIN", nil, nil
+}
+
+func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
+	if !more {
+		return nil, nil
+	}
+
+	command := strings.ToLower(strings.TrimSuffix(string(fromServer), ":"))
+	switch command {
+	case "username":
+		return []byte(fmt.Sprintf("%s", a.username)), nil
+	case "password":
+		return []byte(fmt.Sprintf("%s", a.password)), nil
+	default:
+		return nil, fmt.Errorf("LoginAuth: unexpected server challenge: %s", command)
+	}
+}
+
+// param @args : Supported optional arguments are "skipverify" in order to skip TLS cert validation (insecure).
 func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 	c, err := smtp.Dial(addr)
 	if err != nil {
@@ -174,15 +222,12 @@ func Send(addr string, auth smtp.Auth, m *Message, skipverify bool) error {
 		if err = c.StartTLS(config); err != nil {
 			return err
 		}
-		fmt.Println("STARTTLS ok")
 	}
 	if auth != nil {
-		if ok, params := c.Extension("AUTH"); ok {
-			if ok, params = c.Extension("LOGIN"); ok {
-		        	if err = c.Auth(auth); err != nil {
-			            	return err
-	        	 	}
-			}
+		if ok, _ := c.Extension("AUTH"); ok {
+                       if err = c.Auth(auth); err != nil {
+                               return err
+                       }
 		}
 	}
 	if err = c.Mail(m.From); err != nil {
